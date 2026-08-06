@@ -1,0 +1,14 @@
+[package]
+name = "novadb-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Command-line interface for NovaDB"
+
+[dependencies]
+novadb = { path = ".." }
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "novadb"
+path = "src/main.rs"
