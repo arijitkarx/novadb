@@ -146,6 +146,7 @@ insert/sync=Every               ~11 ms   (dominated by fsync)
 
 ## Documentation
 
+- [`docs/overview.md`](docs/overview.md) — the codebase map: entry points, what the WAL is, storage, lifecycle
 - [`docs/format.md`](docs/format.md) — the `*.nova` snapshot format
 - [`docs/wal.md`](docs/wal.md) — the write-ahead log protocol and recovery
 - [`docs/query.md`](docs/query.md) — the metadata filter DSL
