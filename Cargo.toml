@@ -2,12 +2,12 @@
 name = "novadb"
 version = "0.1.0"
 edition = "2021"
-description = "A lightweight embedded vector database built from scratch in Rust"
+description = "A self-hostable bring-your-own-storage vector database with an embedded Rust library"
 license = "MIT"
-repository = "https://github.com/anomalyco/novadb"
+repository = "https://github.com/arijitkarx/novadb"
 
 [workspace]
-members = ["cli", "benchmarks"]
+members = ["cli", "server", "benchmarks"]
 resolver = "2"
 
 [lib]

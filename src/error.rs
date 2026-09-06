@@ -21,6 +21,8 @@ pub enum NovaError {
     Parse(String),
     /// Serialization/deserialization failed (bincode/serde).
     Encoding(String),
+    /// An optimistic concurrency precondition failed.
+    Conflict(String),
 }
 
 impl fmt::Display for NovaError {
@@ -37,6 +39,7 @@ impl fmt::Display for NovaError {
             NovaError::EmptyVector => write!(f, "vector must not be empty"),
             NovaError::Parse(msg) => write!(f, "parse error: {msg}"),
             NovaError::Encoding(msg) => write!(f, "encoding error: {msg}"),
+            NovaError::Conflict(msg) => write!(f, "conflict: {msg}"),
         }
     }
 }

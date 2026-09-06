@@ -1,14 +1,14 @@
 # NovaDB v0.1
 
-**A lightweight embedded vector database built from scratch in Rust.**
+**A self-hostable bring-your-own-storage vector database with an embedded Rust library.**
 
-NovaDB is an educational, open-source systems project. It implements its own
+NovaDB is an open-source systems project. It implements its own
 storage engine, write-ahead log with crash recovery, exact flat vector search,
 metadata filtering, and hybrid retrieval — no external database underneath.
 
-> Built to demonstrate systems engineering fundamentals: storage engine
-> design, binary file formats, write-ahead logging, crash recovery, and API
-> design — not to compete with production databases.
+The current BYOS milestone adds an authenticated HTTP server and the
+provider-neutral storage contract. Local persistent volumes are usable today;
+S3/GCS synchronization remains in progress and is not represented as complete.
 
 ## Features
 
@@ -19,10 +19,23 @@ metadata filtering, and hybrid retrieval — no external database underneath.
 | Retrieval | Exact flat top-K search, cosine similarity, precomputed norms |
 | Filtering | Equality, numeric comparisons, boolean AND over JSON metadata |
 | Hybrid | Vector similarity + metadata filter in one query (filter-then-score) |
-| DX | JSON CLI, fluent Rust query API, Criterion benchmarks |
+| DX | HTTP/JSON server, JSON CLI, fluent Rust API, Criterion benchmarks |
 
-**Intentionally out of scope (v0.1):** SQL, HNSW/IVF/PQ, replication, Raft,
-full-text search, distributed execution.
+**Intentionally out of scope (v0.1):** multi-writer operation, SQL,
+HNSW/IVF/PQ, replication, Raft, full-text search, distributed execution.
+
+## Self-hosted quick start
+
+```console
+export NOVADB_API_KEY='replace-with-a-long-random-secret'
+docker compose up --build
+curl http://localhost:8080/health
+curl -H "Authorization: Bearer $NOVADB_API_KEY" http://localhost:8080/v1/info
+```
+
+See [`docs/byos.md`](docs/byos.md) for the deployment contract, limits, and API
+examples. One process owns one database and data directory; v0.1 is
+single-writer and non-distributed.
 
 ## Quick start
 
@@ -70,7 +83,7 @@ See `examples/basic.rs` for a runnable version.
 
 ```text
                 Client
-          (CLI / Rust API)
+       (HTTP / CLI / Rust API)
                   │
             Query Engine
           ┌───────┴────────┐
@@ -111,6 +124,7 @@ src/
 ├── vector/     cosine similarity, flat top-K search
 ├── metadata/   filter AST + query DSL parser
 └── engine/     Database lifecycle, hybrid queries
+server/         authenticated HTTP/JSON server
 cli/            JSON command-line interface
 benchmarks/     Criterion: search latency & insert throughput
 tests/          integration tests incl. crash recovery
