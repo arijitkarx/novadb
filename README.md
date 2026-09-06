@@ -1,4 +1,4 @@
-# NovaDB v0.1
+# NovaDB BYOS v0.1 Alpha
 
 **A self-hostable bring-your-own-storage vector database with an embedded Rust library.**
 
@@ -6,9 +6,14 @@ NovaDB is an open-source systems project. It implements its own
 storage engine, write-ahead log with crash recovery, exact flat vector search,
 metadata filtering, and hybrid retrieval — no external database underneath.
 
-The current BYOS milestone adds an authenticated HTTP server and the
-provider-neutral storage contract. Local persistent volumes are usable today;
-S3/GCS synchronization remains in progress and is not represented as complete.
+The current alpha includes an authenticated HTTP server and a provider-neutral
+storage contract. Local persistent volumes are usable today. Native S3 and GCS
+synchronization is planned but **not implemented yet**.
+
+> **Project status:** NovaDB is open-source alpha software. It is suitable for
+> evaluation, internal tools, prototypes, and small single-node workloads where
+> downtime is acceptable. Do not present the current release as a distributed,
+> highly available, or remote-object-storage-backed database.
 
 ## Features
 
@@ -36,6 +41,67 @@ curl -H "Authorization: Bearer $NOVADB_API_KEY" http://localhost:8080/v1/info
 See [`docs/byos.md`](docs/byos.md) for the deployment contract, limits, and API
 examples. One process owns one database and data directory; v0.1 is
 single-writer and non-distributed.
+
+## Basic production deployment
+
+The current release can be deployed as a single-node service backed by a
+durable local or cloud block-storage volume:
+
+1. Clone the repository and generate a strong API key.
+2. Mount a durable SSD-backed host path or block volume at `/data`.
+3. Start one NovaDB container for that data directory.
+4. Keep port `8080` private and place Caddy, Nginx, Traefik, or a cloud load
+   balancer in front of it for TLS, rate limiting, and request timeouts.
+5. Back up the complete data directory and regularly test restoration.
+6. Monitor `/health`, `/ready`, container restarts, disk usage, and logs.
+
+For example, change the service volume in `compose.yml` to a host path:
+
+```yaml
+services:
+  novadb:
+    volumes:
+      - /srv/novadb/data:/data
+```
+
+Store `NOVADB_API_KEY` in a deployment secret or protected environment file,
+not in source control. Stop the container gracefully so NovaDB can checkpoint
+its state. Never run two NovaDB processes against the same data directory.
+
+### S3 and S3-compatible storage
+
+NovaDB cannot currently use S3 as its live durable backend. The
+`StorageBackend` trait is the integration foundation, but the database lifecycle
+is still connected to the local filesystem. Mounting a bucket with `s3fs` or a
+similar FUSE adapter is not recommended because object stores do not provide the
+filesystem durability and atomicity assumptions used by the local engine.
+
+Today, use a persistent block volume for live data and copy verified backups to
+S3. This makes S3 a backup destination, not the database's source of truth.
+
+The planned native S3 implementation will:
+
+- keep local disk as a rebuildable cache and WAL working area;
+- upload completed WAL segments and snapshots as immutable objects;
+- commit generations through a versioned `manifest.json` using conditional
+  writes/ETags;
+- recover from the latest snapshot plus subsequent WAL segments at startup; and
+- require one writer for each database prefix.
+
+The intended configuration shape is:
+
+```env
+NOVADB_STORAGE_PROVIDER=s3
+NOVADB_S3_BUCKET=my-private-bucket
+NOVADB_S3_PREFIX=production/novadb
+NOVADB_S3_REGION=us-east-1
+NOVADB_DATA_DIR=/var/cache/novadb
+NOVADB_API_KEY=replace-with-a-secret
+```
+
+These S3 variables are documentation of the planned interface and are **not
+accepted by the current server**. IAM roles will be preferred over static access
+keys when the backend is implemented.
 
 ## Quick start
 
@@ -164,11 +230,20 @@ insert/sync=Every               ~11 ms   (dominated by fsync)
 - [`docs/format.md`](docs/format.md) — the `*.nova` snapshot format
 - [`docs/wal.md`](docs/wal.md) — the write-ahead log protocol and recovery
 - [`docs/query.md`](docs/query.md) — the metadata filter DSL
+- [`docs/byos.md`](docs/byos.md) — server configuration, deployment contract, limits, and API examples
 
 ## Roadmap (not in v0.1)
 
-Python SDK (PyO3), HNSW/IVF approximate indexes, SQL-ish interface, columnar
-storage, REST server. See `task.md` for the full project brief.
+- Native S3-compatible and Google Cloud Storage durability and recovery
+- Backup, restore, verify, and index-rebuild commands
+- Python SDK and OpenAPI documentation
+- Metrics, operational alerts, and process-level single-writer locking
+- HNSW approximate indexing after remote durability is stable
+- SQL-like and full-text interfaces as later work
+
+See [`novadb_byos_plan.md`](novadb_byos_plan.md) for the complete plan. Issues
+and focused pull requests are welcome, particularly around object-storage
+contracts, failure testing, recovery, API compatibility, and documentation.
 
 ## License
 
